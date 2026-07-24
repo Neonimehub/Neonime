@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEONIME // Signal Archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<style>
+  :root{
+    --void:#08070d;
+    --void-2:#0d0c16;
+    --cyan:#00f0ff;
+    --violet:#9d4dff;
+    --pink:#ff2f9e;
+    --blue:#3b5bff;
+    --ink:#e8e6f0;
+    --muted:#8b87a0;
+    --glass:rgba(20,18,32,0.45);
+    --glass-border:rgba(157,77,255,0.25);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--void);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    overflow-x:hidden;
+    cursor:none;
+  }
+  @media (max-width: 900px){ body{cursor:auto;} .cursor-dot,.cursor-ring{display:none;} }
+
+  ::selection{background:var(--violet);color:#fff;}
+
+  h1,h2,h3,.display{
+    font-family:'Rajdhani',sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.02em;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  /* ---------- custom cursor ---------- */
+  .cursor-dot,.cursor-ring{
+    position:fixed;top:0;left:0;pointer-events:none;z-index:9999;
+    border-radius:50%;transform:translate(-50%,-50%);
+  }
+  .cursor-dot{width:6px;height:6px;background:var(--cyan);box-shadow:0 0 10px var(--cyan);}
+  .cursor-ring{width:34px;height:34px;border:1px solid rgba(0,240,255,0.5);transition:width .2s,height .2s,border-color .2s,background .2s;}
+  .cursor-ring.hover{width:64px;height:64px;background:rgba(157,77,255,0.08);border-color:var(--pink);}
+
+  /* ---------- loader ---------- */
+  #loader{
+    position:fixed;inset:0;z-index:9998;background:var(--void);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  }
+  #loader .tag{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:0.15em;}
+  #loader .brand{font-size:14vw;line-height:1;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.05em;
+    background:linear-gradient(90deg,var(--cyan),var(--violet) 50%,var(--pink));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  @media(min-width:700px){#loader .brand{font-size:6rem;}}
+  #loader .bar{width:min(70vw,420px);height:2px;background:rgba(255,255,255,0.08);position:relative;overflow:hidden;border-radius:2px;}
+  #loader .bar-fill{position:absolute;left:0;top:0;height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--pink));}
+  #loader .pct{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+
+  /* ---------- background layers ---------- */
+  #bg-canvas{position:fixed;inset:0;z-index:0;}
+  .aurora{
+    position:fixed;inset:0;z-index:0;pointer-events:none;filter:blur(60px);opacity:0.55;
+  }
+  .aurora span{
+    position:absolute;border-radius:50%;mix-blend-mode:screen;
+  }
+  .aurora .a1{width:50vw;height:50vw;background:var(--violet);top:-15%;left:-10%;animation:drift1 22s ease-in-out infinite;}
+  .aurora .a2{width:45vw;height:45vw;background:var(--cyan);top:20%;right:-15%;animation:drift2 26s ease-in-out infinite;}
+  .aurora .a3{width:40vw;height:40vw;background:var(--pink);bottom:-20%;left:20%;animation:drift3 30s ease-in-out infinite;}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(8vw,10vh) scale(1.15);}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-10vw,6vh) scale(0.9);}}
+  @keyframes drift3{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(6vw,-8vh) scale(1.1);}}
+
+  .glow-follow{
+    position:fixed;top:0;left:0;width:600px;height:600px;border-radius:50%;
+    background:radial-gradient(circle,rgba(0,240,255,0.10),transparent 70%);
+    transform:translate(-50%,-50%);pointer-events:none;z-index:1;transition:opacity .3s;
+  }
+
+  .grid-floor{
+    position:fixed;left:0;right:0;bottom:0;height:45vh;z-index:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(157,77,255,0.25) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(157,77,255,0.25) 1px, transparent 1px);
+    background-size:60px 60px;
+    transform:perspective(500px) rotateX(75deg);
+    transform-origin:bottom;
+    mask-image:linear-gradient(to top, black, transparent);
+    opacity:0.35;
+  }
+
+  /* ---------- layout ---------- */
+  header{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 5vw;backdrop-filter:blur(12px);
+    border-bottom:1px solid rgba(255,255,255,0.05);
+  }
+  .logo{font-size:1.3rem;font-weight:700;letter-spacing:0.08em;}
+  .logo span{color:var(--cyan);}
+  nav{display:none;gap:32px;font-size:0.8rem;letter-spacing:0.12em;text-transform:uppercase;}
+  nav a{color:var(--muted);text-decoration:none;position:relative;transition:color .3s;}
+  nav a:hover{color:var(--ink);}
+  @media(min-width:800px){nav{display:flex;}}
+  .signin{
+    font-family:'JetBrains Mono',monospace;font-size:0.75rem;padding:9px 20px;border-radius:100px;
+    border:1px solid var(--glass-border);background:var(--glass);color:var(--ink);letter-spacing:0.05em;
+    cursor:pointer;
+  }
+
+  section{position:relative;z-index:2;padding:0 5vw;}
+
+  /* ---------- hero ---------- */
+  .hero{
+    min-height:100vh;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;
+    padding-top:110px;position:relative;overflow:hidden;
+  }
+  .hero-collage{
+    position:relative;width:100%;max-width:1400px;border-radius:22px;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(157,77,255,0.25);
+    transition:transform .6s cubic-bezier(.2,.8,.2,1);
+    opacity:0;transform:scale(0.96) translateY(24px);
+  }
+  .hero-collage.in{opacity:1;}
+  .hero-collage-frame{position:relative;width:100%;aspect-ratio:16/10.2;overflow:hidden;}
+
+  /* ---------- hero collage interactive hotspots ---------- */
+  .hero-hotspots{position:absolute;inset:0;z-index:4;}
+  .hotspot{
+    position:absolute;transform:translate(-50%,-50%);width:22px;height:22px;
+    border:none;background:none;cursor:pointer;pointer-events:auto;
+  }
+  .hotspot .ring1,.hotspot .ring2{
+    position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--cyan);
+  }
+  .hotspot .ring1{animation:hs-ping 2.2s cubic-bezier(.2,.7,.3,1) infinite;}
+  .hotspot .core{
+    position:absolute;left:50%;top:50%;width:9px;height:9px;transform:translate(-50%,-50%);
+    border-radius:50%;background:var(--cyan);box-shadow:0 0 10px 2px rgba(0,240,255,0.85);
+  }
+  .hotspot:hover .core, .hotspot.active .core{background:var(--pink);box-shadow:0 0 12px 3px rgba(255,47,158,0.9);}
+  .hotspot:hover .ring2, .hotspot.active .ring2{border-color:var(--pink);}
+  @keyframes hs-ping{0%{transform:scale(0.6);opacity:0.9;}100%{transform:scale(2.2);opacity:0;}}
+
+  .hotspot-card{
+    position:absolute;z-index:6;width:200px;padding:12px 14px;border-radius:12px;
+    background:rgba(10,9,17,0.88);backdrop-filter:blur(10px);border:1px solid var(--glass-border);
+    box-shadow:0 20px 50px rgba(0,0,0,0.5);pointer-events:none;
+    opacity:0;transform:translateY(8px) scale(0.94);
+  }
+  .hotspot-card .hc-name{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.95rem;color:var(--ink);}
+  .hotspot-card .hc-series{font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;color:var(--cyan);margin-top:2px;}
+  .hotspot-card .hc-desc{font-size:0.72rem;color:var(--muted);line-height:1.5;margin-top:6px;}
+  @media (max-width:700px){ .hotspot-card{width:160px;padding:10px 12px;} .hotspot-card .hc-desc{display:none;} }
+  .hero-collage img{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 28%;
+    filter:saturate(1.18) contrast(1.06) brightness(0.98);
+    animation:kenburns 30s ease-in-out infinite alternate;
+    will-change:transform;
+  }
+  @keyframes kenburns{
+    0%{transform:scale(1.0) translate(0,0);}
+    100%{transform:scale(1.07) translate(-1%,-0.6%);}
+  }
+  .hero-collage-frame::before{
+    content:'';position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:linear-gradient(to top, rgba(8,7,13,0.92) 0%, rgba(8,7,13,0.25) 20%, transparent 42%, transparent 78%, rgba(8,7,13,0.35) 100%);
+  }
+  .hero-collage-frame::after{
+    content:'';position:absolute;inset:0;z-index:1;pointer-events:none;border-radius:22px;
+    box-shadow:inset 0 0 90px rgba(0,240,255,0.10), inset 0 0 30px rgba(255,47,158,0.10);
+  }
+  .hero-collage .scan{
+    position:absolute;inset:0;z-index:2;mix-blend-mode:screen;opacity:0.35;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(0,240,255,0.05) 0px,rgba(0,240,255,0.05) 1px,transparent 1px,transparent 3px);
+  }
+  .hero-collage .sparkle{
+    position:absolute;border-radius:50%;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,0.8);
+    opacity:0;animation:twinkle 3.4s ease-in-out infinite;z-index:2;
+  }
+  @keyframes twinkle{0%,100%{opacity:0;transform:scale(0.4);}50%{opacity:1;transform:scale(1.1);}}
+  .hero-collage-caption{
+    position:absolute;left:0;right:0;bottom:0;z-index:3;padding:26px 30px;
+    display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  }
+  .hero-collage-caption .eyebrow{margin-bottom:0;}
+  .hero-collage-caption .live-badge{
+    font-family:'JetBrains Mono',monospace;font-size:0.68rem;letter-spacing:0.12em;color:var(--ink);
+    display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:100px;
+    background:rgba(8,7,13,0.55);backdrop-filter:blur(8px);border:1px solid var(--glass-border);
+  }
+  .live-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--pink);box-shadow:0 0 8px var(--pink);animation:pulse-dot 1.6s ease-in-out infinite;}
+  @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(1.4);}}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:0.3em;color:var(--cyan);
+    display:flex;align-items:center;gap:10px;margin-bottom:22px;opacity:0;
+  }
+  .eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);}
+  .hero h1{
+    font-size:clamp(2.2rem,6.2vw,4.4rem);font-weight:700;line-height:0.98;margin-top:34px;
+    background:linear-gradient(120deg,#fff 10%,var(--cyan) 45%,var(--violet) 70%,var(--pink) 95%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    overflow:hidden;text-align:center;
+  }
+  .hero h1 .line{display:block;transform:translateY(110%);}
+  .hero p{max-width:560px;margin:26px auto 0;color:var(--muted);font-size:1.02rem;line-height:1.7;opacity:0;text-align:center;}
+  .hero .ctas{display:flex;gap:16px;margin-top:38px;flex-wrap:wrap;opacity:0;justify-content:center;}
+  .btn{
+    font-family:'JetBrains Mono',monospace;font-size:0.8rem;letter-spacing:0.05em;padding:14px 30px;border-radius:6px;
+    cursor:pointer;border:none;position:relative;overflow:hidden;
+  }
+  .btn-primary{background:linear-gradient(90deg,var(--cyan),var(--violet));color:#050508;font-weight:600;}
+  .btn-ghost{background:var(--glass);border:1px solid var(--glass-border);color:var(--ink);}
+  .hero-stats{display:flex;gap:40px;margin-top:56px;margin-bottom:20px;flex-wrap:wrap;opacity:0;justify-content:center;}
+  .hero-stats div{border-left:2px solid var(--violet);padding-left:14px;}
+  .btn{transition:transform .18s ease;}
+  .hero-stats .num{font-family:'Rajdhani',sans-serif;font-size:1.8rem;font-weight:700;}
+  .hero-stats .lbl{font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.1em;}
+
+  /* ---------- section headers ---------- */
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:34px;flex-wrap:wrap;gap:12px;}
+  .sec-head h2{font-size:clamp(1.6rem,3.5vw,2.4rem);font-weight:700;}
+  .sec-head .idx{font-family:'JetBrains Mono',monospace;color:var(--violet);font-size:0.75rem;letter-spacing:0.2em;}
+
+  /* ---------- trending rail ---------- */
+  .rail-wrap{padding:100px 5vw;position:relative;}
+  #trending-rail{
+    display:flex;gap:20px;overflow-x:auto;padding-bottom:14px;scroll-snap-type:x mandatory;
+    scrollbar-width:none;
+  }
+  #trending-rail::-webkit-scrollbar{display:none;}
+  .card{
+    scroll-snap-align:start;flex:0 0 220px;border-radius:14px;overflow:hidden;position:relative;
+    background:var(--glass);border:1px solid var(--glass-border);
+    transition:border-color .35s;will-change:transform;
+  }
+  .card:hover{border-color:var(--cyan);}
+  .card .poster{width:100%;height:300px;object-fit:cover;display:block;background:#151222;}
+  .card .info{padding:14px;}
+  .card .title{font-family:'Rajdhani',sans-serif;font-weight:600;font-size:0.95rem;line-height:1.25;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.4em;}
+  .card .meta{display:flex;justify-content:space-between;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--muted);}
+  .card .score{color:var(--cyan);}
+  .card .rank{
+    position:absolute;top:10px;left:10px;background:rgba(8,7,13,0.7);backdrop-filter:blur(6px);
+    padding:4px 10px;border-radius:100px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;
+    border:1px solid var(--glass-border);color:var(--pink);
+  }
+  .card .status-badge{
+    position:absolute;top:10px;left:10px;backdrop-filter:blur(6px);
+    padding:4px 10px;border-radius:100px;font-family:'JetBrains Mono',monospace;font-size:0.62rem;
+    letter-spacing:0.04em;border:1px solid var(--glass-border);
+  }
+  .card .status-badge.not-yet{background:rgba(157,77,255,0.25);color:var(--violet);border-color:rgba(157,77,255,0.4);}
+  .card .status-badge.airing{background:rgba(0,240,255,0.18);color:var(--cyan);border-color:rgba(0,240,255,0.4);}
+  .skeleton{background:linear-gradient(100deg,#141220 30%,#1c1830 50%,#141220 70%);background-size:200% 100%;animation:shimmer 1.4s infinite;}
+  @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+
+  /* ---------- feature grid ---------- */
+  .features{padding:60px 5vw 120px;}
+  .grid{display:grid;grid-template-columns:1fr;gap:20px;}
+  @media(min-width:700px){.grid{grid-template-columns:repeat(3,1fr);}}
+  .feat-card{
+    background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:30px;
+    position:relative;overflow:hidden;
+  }
+  .feat-card::before{
+    content:'';position:absolute;inset:0;opacity:0;transition:opacity .4s;
+    background:radial-gradient(circle at 30% 20%, rgba(157,77,255,0.25), transparent 60%);
+  }
+  .feat-card:hover::before{opacity:1;}
+  .feat-card .n{font-family:'JetBrains Mono',monospace;color:var(--violet);font-size:0.7rem;letter-spacing:0.2em;}
+  .feat-card h3{font-size:1.2rem;margin-top:14px;font-weight:600;}
+  .feat-card p{color:var(--muted);font-size:0.88rem;margin-top:10px;line-height:1.6;}
+
+  footer{
+    padding:60px 5vw 40px;border-top:1px solid rgba(255,255,255,0.05);position:relative;z-index:2;
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px;
+    font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted);
+  }
+
+  .reveal{opacity:0;transform:translateY(40px);}
+
+  /* ---------- browse grid ---------- */
+  .browse-wrap{padding:20px 5vw 100px;}
+  .card-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}
+  @media(min-width:600px){.card-grid{grid-template-columns:repeat(3,1fr);}}
+  @media(min-width:900px){.card-grid{grid-template-columns:repeat(5,1fr);}}
+  .card-grid .card .poster{height:230px;}
+  .load-more{
+    display:block;margin:36px auto 0;font-family:'JetBrains Mono',monospace;font-size:0.78rem;
+    padding:12px 28px;border-radius:100px;border:1px solid var(--glass-border);background:var(--glass);
+    color:var(--ink);letter-spacing:0.08em;cursor:pointer;transition:border-color .3s,color .3s;
+  }
+  .load-more:hover{border-color:var(--cyan);color:var(--cyan);}
+  .load-more:disabled{opacity:0.4;cursor:default;}
+  .card{cursor:pointer;}
+
+  /* ---------- modal ---------- */
+  #anime-modal{
+    position:fixed;inset:0;z-index:3000;display:none;align-items:flex-start;justify-content:center;
+    padding:6vh 5vw;background:rgba(5,4,10,0.78);backdrop-filter:blur(10px);overflow-y:auto;
+  }
+  #anime-modal.open{display:flex;}
+  .modal-panel{
+    position:relative;width:min(880px,100%);margin-bottom:6vh;border-radius:20px;overflow:hidden;
+    background:var(--void-2);border:1px solid var(--glass-border);box-shadow:0 40px 100px rgba(0,0,0,0.65);
+  }
+  .modal-close{
+    position:absolute;top:16px;right:16px;z-index:5;width:38px;height:38px;border-radius:50%;
+    background:rgba(8,7,13,0.65);backdrop-filter:blur(6px);border:1px solid var(--glass-border);
+    color:var(--ink);font-size:1rem;cursor:pointer;transition:border-color .3s,color .3s,transform .3s;
+  }
+  .modal-close:hover{border-color:var(--pink);color:var(--pink);transform:rotate(90deg);}
+  .modal-loading{padding:100px 20px;text-align:center;color:var(--muted);font-size:0.85rem;letter-spacing:0.1em;}
+  .modal-banner{width:100%;height:220px;object-fit:cover;display:block;background:#141220;}
+  .modal-body{padding:30px 34px 40px;}
+  .modal-body h2{font-size:clamp(1.5rem,4vw,2.1rem);font-weight:700;line-height:1.1;}
+  .modal-meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;font-size:0.72rem;color:var(--muted);letter-spacing:0.06em;}
+  .modal-meta .score{color:var(--cyan);}
+  .modal-genres{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+  .genre-tag{
+    font-size:0.65rem;letter-spacing:0.08em;padding:5px 12px;border-radius:100px;
+    border:1px solid var(--glass-border);color:var(--violet);
+  }
+  .modal-desc{margin-top:18px;color:var(--muted);font-size:0.92rem;line-height:1.7;}
+  .modal-studio{margin-top:14px;font-size:0.68rem;color:var(--muted);letter-spacing:0.1em;}
+  .char-head{margin-top:34px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);font-size:1.05rem;font-weight:600;}
+  .char-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:14px;margin-top:18px;}
+  .char-card{text-align:center;}
+  .char-card img{
+    width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;background:#141220;
+    border:1px solid var(--glass-border);
+  }
+  .char-name{margin-top:8px;font-size:0.75rem;font-weight:600;line-height:1.25;}
+  .char-role{margin-top:2px;font-size:0.6rem;color:var(--pink);letter-spacing:0.1em;}
+
+  /* ---------- auth: signin pill (logged in state) ---------- */
+  .user-pill{
+    display:none;align-items:center;gap:10px;padding:6px 16px 6px 6px;border-radius:100px;
+    background:var(--glass);border:1px solid var(--glass-border);cursor:pointer;position:relative;
+  }
+  .user-pill.show{display:flex;}
+  .user-avatar{
+    width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.85rem;color:#050508;
+    background:linear-gradient(135deg,var(--cyan),var(--violet));flex-shrink:0;
+  }
+  .user-pill .u-name{font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:0.03em;color:var(--ink);}
+  .user-pill .u-caret{color:var(--muted);font-size:0.6rem;transition:transform .25s;}
+  .user-pill.open .u-caret{transform:rotate(180deg);}
+  .user-dropdown{
+    position:absolute;top:calc(100% + 10px);right:0;min-width:190px;border-radius:14px;overflow:hidden;
+    background:var(--void-2);border:1px solid var(--glass-border);box-shadow:0 20px 50px rgba(0,0,0,0.55);
+    opacity:0;transform:translateY(-8px) scale(0.96);pointer-events:none;transition:opacity .2s,transform .2s;
+  }
+  .user-pill.open .user-dropdown{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+  .user-dropdown .ud-email{padding:14px 16px 10px;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.06);word-break:break-all;}
+  .user-dropdown button{
+    width:100%;text-align:left;padding:12px 16px;background:none;border:none;color:var(--ink);
+    font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:0.04em;cursor:pointer;transition:background .2s,color .2s;
+  }
+  .user-dropdown button:hover{background:rgba(255,47,158,0.12);color:var(--pink);}
+
+  /* ---------- auth: signin modal ---------- */
+  #signin-modal{
+    position:fixed;inset:0;z-index:4000;display:none;align-items:center;justify-content:center;
+    padding:5vh 5vw;background:rgba(5,4,10,0.82);backdrop-filter:blur(14px);
+  }
+  #signin-modal.open{display:flex;}
+  .signin-panel{
+    position:relative;width:min(400px,100%);border-radius:22px;padding:2px;
+    background:linear-gradient(135deg,var(--cyan),var(--violet),var(--pink));
+    background-size:200% 200%;animation:borderFlow 6s ease infinite;
+    box-shadow:0 40px 100px rgba(0,0,0,0.65);
+  }
+  @keyframes borderFlow{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+  .signin-inner{
+    background:var(--void-2);border-radius:20px;padding:38px 32px 32px;position:relative;overflow:hidden;
+  }
+  .signin-close{
+    position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;
+    background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);color:var(--muted);
+    cursor:pointer;font-size:0.9rem;transition:color .25s,border-color .25s,transform .25s;
+  }
+  .signin-close:hover{color:var(--pink);border-color:var(--pink);transform:rotate(90deg);}
+  .signin-glyph{
+    width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--cyan),var(--violet));margin-bottom:20px;
+    font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.4rem;color:#050508;
+  }
+  .signin-inner h3{font-size:1.5rem;font-weight:700;}
+  .signin-sub{color:var(--muted);font-size:0.82rem;margin-top:8px;font-family:'JetBrains Mono',monospace;letter-spacing:0.02em;}
+  .signin-field{margin-top:26px;position:relative;}
+  .signin-field label{display:block;font-family:'JetBrains Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;color:var(--cyan);margin-bottom:8px;}
+  .signin-field input{
+    width:100%;padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.03);
+    border:1px solid var(--glass-border);color:var(--ink);font-family:'Inter',sans-serif;font-size:0.92rem;
+    outline:none;transition:border-color .25s,background .25s,box-shadow .25s;
+  }
+  .signin-field input:focus{border-color:var(--cyan);background:rgba(0,240,255,0.04);box-shadow:0 0 0 4px rgba(0,240,255,0.08);}
+  .signin-error{color:var(--pink);font-size:0.72rem;font-family:'JetBrains Mono',monospace;margin-top:8px;min-height:1em;opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s;}
+  .signin-error.show{opacity:1;transform:translateY(0);}
+  .signin-submit{
+    width:100%;margin-top:24px;padding:15px;border-radius:10px;border:none;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-weight:600;font-size:0.85rem;letter-spacing:0.06em;
+    background:linear-gradient(90deg,var(--cyan),var(--violet));color:#050508;
+    position:relative;overflow:hidden;transition:transform .2s,opacity .2s;
+  }
+  .signin-submit:active{transform:scale(0.97);}
+  .signin-submit:disabled{opacity:0.6;cursor:default;}
+  .signin-submit .label{display:inline-flex;align-items:center;gap:9px;}
+  .spinner{
+    width:14px;height:14px;border-radius:50%;border:2px solid rgba(5,5,8,0.25);border-top-color:#050508;
+    animation:spin .7s linear infinite;display:none;
+  }
+  .signin-submit.loading .spinner{display:inline-block;}
+  .signin-submit.loading .label-text{display:none;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .signin-foot{margin-top:20px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--muted);}
+
+  /* success burst state */
+  .signin-success{
+    display:none;flex-direction:column;align-items:center;text-align:center;padding:14px 0 4px;
+  }
+  .signin-success.show{display:flex;}
+  .success-ring{
+    width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle,rgba(0,240,255,0.18),transparent 70%);
+    border:2px solid var(--cyan);margin-bottom:18px;position:relative;
+  }
+  .success-ring svg{width:32px;height:32px;}
+  .success-ring path{
+    stroke:var(--cyan);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;
+    stroke-dasharray:40;stroke-dashoffset:40;
+  }
+  .success-title{font-size:1.2rem;font-weight:700;font-family:'Rajdhani',sans-serif;}
+  .success-sub{color:var(--muted);font-size:0.8rem;margin-top:6px;font-family:'JetBrains Mono',monospace;}
+  .confetti-piece{
+    position:absolute;top:50%;left:50%;width:6px;height:6px;border-radius:1px;pointer-events:none;
+  }
+
+  /* ---------- sound control ---------- */
+  .sound-ctrl{
+    display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:100px;
+    background:var(--glass);border:1px solid var(--glass-border);
+  }
+  .sound-btn{
+    width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:var(--ink);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.9rem;transition:color .25s;
+  }
+  .sound-btn:hover{color:var(--cyan);}
+  .sound-ctrl input[type=range]{
+    -webkit-appearance:none;width:70px;height:3px;border-radius:3px;
+    background:linear-gradient(90deg,var(--cyan),var(--violet));cursor:pointer;
+  }
+  .sound-ctrl input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:#fff;
+    box-shadow:0 0 6px var(--cyan);cursor:pointer;
+  }
+  .sound-bars{display:flex;align-items:flex-end;gap:2px;height:14px;}
+  .sound-bars span{width:2.5px;background:var(--cyan);border-radius:2px;animation:soundbar 1s ease-in-out infinite;}
+  .sound-bars span:nth-child(1){height:40%;animation-delay:0s;}
+  .sound-bars span:nth-child(2){height:100%;animation-delay:.15s;}
+  .sound-bars span:nth-child(3){height:65%;animation-delay:.3s;}
+  .sound-bars.muted span{animation-play-state:paused;height:20% !important;opacity:0.35;}
+  @keyframes soundbar{0%,100%{transform:scaleY(0.4);}50%{transform:scaleY(1);}}
+
+  /* ---------- filter bar ---------- */
+  .filter-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px;}
+  .filter-chip{
+    font-family:'JetBrains Mono',monospace;font-size:0.72rem;letter-spacing:0.05em;
+    padding:8px 18px;border-radius:100px;border:1px solid var(--glass-border);background:var(--glass);
+    color:var(--muted);cursor:pointer;transition:border-color .25s,color .25s,background .25s,transform .2s;
+  }
+  .filter-chip:hover{color:var(--ink);border-color:var(--cyan);transform:translateY(-2px);}
+  .filter-chip.active{
+    color:#050508;border-color:transparent;font-weight:600;
+    background:linear-gradient(90deg,var(--cyan),var(--violet));
+  }
+
+  /* ---------- trailer ---------- */
+  .modal-trailer{margin-top:22px;}
+  .modal-trailer h4{font-size:0.85rem;letter-spacing:0.1em;color:var(--muted);margin-bottom:12px;font-weight:600;text-transform:uppercase;}
+  .trailer-frame-wrap{position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;border:1px solid var(--glass-border);background:#050508;}
+  .trailer-frame-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+  .no-trailer{
+    padding:22px;text-align:center;border:1px dashed var(--glass-border);border-radius:12px;
+    color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:0.08em;
+  }
+
+  /* ---------- marquee ticker ---------- */
+  .ticker-wrap{
+    position:relative;z-index:2;padding:22px 0;overflow:hidden;
+    border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);
+    background:linear-gradient(90deg, rgba(157,77,255,0.06), rgba(0,240,255,0.06));
+  }
+  .ticker-track{display:flex;width:max-content;gap:0;animation:ticker-scroll 34s linear infinite;}
+  .ticker-track span{
+    font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.1rem;letter-spacing:0.08em;
+    color:var(--muted);padding:0 26px;white-space:nowrap;display:flex;align-items:center;gap:26px;
+  }
+  .ticker-track span::after{content:'◆';color:var(--pink);font-size:0.6rem;}
+  @keyframes ticker-scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+  .ticker-wrap:hover .ticker-track{animation-play-state:paused;}
+
+  /* ---------- character archive ---------- */
+  .char-archive-wrap{padding:100px 5vw;}
+  .char-archive-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;perspective:1200px;}
+  @media(min-width:600px){.char-archive-grid{grid-template-columns:repeat(3,1fr);}}
+  @media(min-width:900px){.char-archive-grid{grid-template-columns:repeat(5,1fr);}}
+  .flip-card{
+    position:relative;height:290px;border-radius:16px;cursor:pointer;
+    transform-style:preserve-3d;will-change:transform;
+  }
+  .flip-face{
+    position:absolute;inset:0;border-radius:16px;overflow:hidden;backface-visibility:hidden;
+    border:1px solid var(--glass-border);background:var(--glass);
+  }
+  .flip-front img{width:100%;height:100%;object-fit:cover;display:block;background:#141220;}
+  .flip-front .fav-badge{
+    position:absolute;top:10px;right:10px;font-family:'JetBrains Mono',monospace;font-size:0.65rem;
+    background:rgba(8,7,13,0.65);backdrop-filter:blur(6px);padding:4px 9px;border-radius:100px;
+    border:1px solid var(--glass-border);color:var(--pink);display:flex;align-items:center;gap:4px;
+  }
+  .flip-front .name-strip{
+    position:absolute;left:0;right:0;bottom:0;padding:12px 12px 10px;
+    background:linear-gradient(to top, rgba(8,7,13,0.95), transparent);
+  }
+  .flip-front .name-strip .n{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.92rem;line-height:1.2;}
+  .flip-front .name-strip .r{font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--cyan);letter-spacing:0.1em;margin-top:2px;}
+  .flip-back{
+    transform:rotateY(180deg);padding:18px;display:flex;flex-direction:column;
+    background:linear-gradient(150deg, rgba(157,77,255,0.18), rgba(0,240,255,0.08));
+  }
+  .flip-back .fb-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1rem;line-height:1.2;}
+  .flip-back .fb-anime{font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--cyan);letter-spacing:0.06em;margin-top:6px;}
+  .flip-back .fb-desc{font-size:0.72rem;color:var(--muted);line-height:1.55;margin-top:10px;overflow:hidden;flex:1;}
+  .flip-back .fb-hint{font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--violet);letter-spacing:0.08em;margin-top:auto;padding-top:8px;}
+  .char-archive-grid .card.skeleton{height:290px;border-radius:16px;}
+
+  /* ---------- tilt-on-hover ---------- */
+  .card, .flip-card{transform-style:preserve-3d;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important;transition-duration:0.001ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor-dot"></div>
+<div class="cursor-ring"></div>
+
+<div id="loader">
+  <div class="tag">SIGNAL ARCHIVE // BOOTING INTERFACE</div>
+  <div class="brand">NEONIME</div>
+  <div class="bar"><div class="bar-fill"></div></div>
+  <div class="pct mono">00%</div>
+</div>
+
+<canvas id="bg-canvas"></canvas>
+<div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+<div class="grid-floor"></div>
+<div class="glow-follow" id="glow"></div>
+
+<header>
+  <div class="logo">NEO<span>NIME</span></div>
+  <nav>
+    <a href="#home">Home</a>
+    <a href="#trending">Trending</a>
+    <a href="#upcoming">Upcoming</a>
+    <a href="#characters">Characters</a>
+    <a href="#browse">Browse</a>
+    <a href="#features">Explore</a>
+    <a href="#footer">About</a>
+  </nav>
+  <div class="sound-ctrl" id="sound-ctrl">
+    <button class="sound-btn" id="sound-toggle" aria-label="Toggle music" title="Toggle synthwave background music">
+      <span class="sound-bars muted" id="sound-bars"><span></span><span></span><span></span></span>
+    </button>
+    <input type="range" id="sound-volume" min="0" max="100" value="35" aria-label="Volume">
+  </div>
+  <button class="signin" id="signin-btn">SIGN IN →</button>
+  <div class="user-pill" id="user-pill">
+    <div class="user-avatar" id="user-avatar">A</div>
+    <span class="u-name" id="user-name">USER</span>
+    <span class="u-caret">▾</span>
+    <div class="user-dropdown" id="user-dropdown">
+      <div class="ud-email" id="user-email">you@gmail.com</div>
+      <button id="signout-btn">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<section class="hero" id="home">
+  <div class="hero-collage" id="hero-collage">
+    <div class="hero-collage-frame">
+      <img id="hero-img" src="hero-collage.jpg" alt="Welcome to Neonime — anime character collage">
+      <div class="scan"></div>
+      <div class="hero-hotspots" id="hero-hotspots"></div>
+      <div class="hero-collage-caption">
+        <div class="eyebrow mono" id="eyebrow" style="opacity:1;">LIVE FEED · ANILIST GRAPHQL</div>
+        <div class="live-badge"><span class="dot"></span>1000+ TITLES INDEXED</div>
+      </div>
+    </div>
+  </div>
+  <h1>
+    <span class="line">ENTER THE</span>
+    <span class="line">NEON ARCHIVE</span>
+  </h1>
+  <p id="hero-p">A living catalog of 1000+ anime, characters, and lore — rendered in real time from the AniList network, including full 2026 season and upcoming release tracking. Every poster, every stat, every character, one signal.</p>
+  <div class="ctas" id="hero-cta">
+    <button class="btn btn-primary" id="cta-browse">BROWSE ANIME</button>
+    <button class="btn btn-ghost" id="cta-trailer">WATCH TRAILER</button>
+  </div>
+  <div class="hero-stats" id="hero-stats">
+    <div><div class="num" id="stat-anime">0</div><div class="lbl">TITLES TRACKED</div></div>
+    <div><div class="num" id="stat-chars">0</div><div class="lbl">CHARACTERS</div></div>
+    <div><div class="num" id="stat-studios">0</div><div class="lbl">STUDIOS</div></div>
+  </div>
+</section>
+
+<div class="ticker-wrap" id="ticker-wrap">
+  <div class="ticker-track" id="ticker-track"></div>
+</div>
+
+<section class="rail-wrap" id="trending">
+  <div class="sec-head reveal">
+    <h2>Trending Now</h2>
+    <div class="idx">// LIVE — SOURCE: ANILIST.CO</div>
+  </div>
+  <div id="trending-rail"></div>
+</section>
+
+<section class="rail-wrap" id="upcoming">
+  <div class="sec-head reveal">
+    <h2>Upcoming &amp; 2026 Anime</h2>
+    <div class="idx">// LIVE — SOURCE: ANILIST.CO</div>
+  </div>
+  <div class="filter-bar" id="upcoming-filter-bar">
+    <button class="filter-chip active" data-status="">ALL 2026+</button>
+    <button class="filter-chip" data-status="NOT_YET_RELEASED">NOT YET RELEASED</button>
+    <button class="filter-chip" data-status="RELEASING">NOW AIRING</button>
+  </div>
+  <div class="card-grid" id="upcoming-grid"></div>
+  <button class="load-more" id="load-more-upcoming-btn">LOAD MORE →</button>
+</section>
+
+<section class="char-archive-wrap" id="characters">
+  <div class="sec-head reveal">
+    <h2>Character Archive</h2>
+    <div class="idx">// TAP A CARD TO FLIP THE DOSSIER</div>
+  </div>
+  <div class="char-archive-grid" id="char-archive-grid"></div>
+  <button class="load-more" id="load-more-chars-btn">LOAD MORE CHARACTERS →</button>
+</section>
+
+<section class="browse-wrap" id="browse">
+  <div class="sec-head reveal">
+    <h2>Browse Archive</h2>
+    <div class="idx">// CLICK ANY TITLE FOR FULL DOSSIER</div>
+  </div>
+  <div class="filter-bar" id="filter-bar">
+    <button class="filter-chip active" data-genre="">ALL</button>
+    <button class="filter-chip" data-genre="Action">ACTION</button>
+    <button class="filter-chip" data-genre="Adventure">ADVENTURE</button>
+    <button class="filter-chip" data-genre="Comedy">COMEDY</button>
+    <button class="filter-chip" data-genre="Drama">DRAMA</button>
+    <button class="filter-chip" data-genre="Fantasy">FANTASY</button>
+    <button class="filter-chip" data-genre="Romance">ROMANCE</button>
+    <button class="filter-chip" data-genre="Sci-Fi">SCI-FI</button>
+    <button class="filter-chip" data-genre="Horror">HORROR</button>
+    <button class="filter-chip" data-genre="Sports">SPORTS</button>
+  </div>
+  <div class="card-grid" id="browse-grid"></div>
+  <button class="load-more" id="load-more-btn">LOAD MORE →</button>
+</section>
+
+<section class="features" id="features">
+  <div class="sec-head reveal">
+    <h2>Archive Modules</h2>
+    <div class="idx">// SYSTEM CAPABILITIES</div>
+  </div>
+  <div class="grid" id="feat-grid">
+    <div class="feat-card reveal"><div class="n">01</div><h3>Character Dossiers</h3><p>HD portraits, abilities, transformations, relationships, and animated power charts for every character in the archive.</p></div>
+    <div class="feat-card reveal"><div class="n">02</div><h3>Seasonal Radar</h3><p>Live seasonal charts, countdown timers, and upcoming release tracking pulled directly from studio announcements.</p></div>
+    <div class="feat-card reveal"><div class="n">03</div><h3>AI Recommendation Core</h3><p>Personalized suggestions from your watch history, ratings, and genre affinity — tuned continuously.</p></div>
+    <div class="feat-card reveal"><div class="n">04</div><h3>Watchlists & Bookmarks</h3><p>Track progress, save favorites, and sync across devices with offline-ready PWA support.</p></div>
+    <div class="feat-card reveal"><div class="n">05</div><h3>Community Signal</h3><p>Reviews, comments, character battles, quizzes, and leaderboards for the archive's most active users.</p></div>
+    <div class="feat-card reveal"><div class="n">06</div><h3>Advanced Query Engine</h3><p>Instant search with filters across genre, studio, year, rating, status, and episode count.</p></div>
+  </div>
+</section>
+
+<footer id="footer">
+  <div>© 2026 NEONIME ARCHIVE — DEMO BUILD</div>
+  <div>DATA: ANILIST.CO GRAPHQL API</div>
+</footer>
+
+<div id="anime-modal">
+  <div class="modal-panel" id="modal-panel">
+    <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+    <div id="modal-content"><div class="modal-loading mono">DECRYPTING SIGNAL…</div></div>
+  </div>
+</div>
+
+<div id="signin-modal">
+  <div class="signin-panel" id="signin-panel">
+    <div class="signin-inner">
+      <button class="signin-close" id="signin-close" aria-label="Close">✕</button>
+
+      <div id="signin-form-wrap">
+        <div class="signin-glyph">◈</div>
+        <h3>Access the Archive</h3>
+        <div class="signin-sub mono">Sign in with your email to sync watchlists &amp; recommendations.</div>
+
+        <form id="signin-form">
+          <div class="signin-field">
+            <label class="mono">EMAIL ADDRESS</label>
+            <input type="email" id="signin-email" placeholder="you@gmail.com" autocomplete="email" required>
+            <div class="signin-error mono" id="signin-error"></div>
+          </div>
+          <button type="submit" class="signin-submit" id="signin-submit">
+            <span class="label">
+              <span class="spinner"></span>
+              <span class="label-text">AUTHENTICATE →</span>
+            </span>
+          </button>
+        </form>
+        <div class="signin-foot">No password needed — demo signal auth</div>
+      </div>
+
+      <div class="signin-success" id="signin-success">
+        <div class="success-ring">
+          <svg viewBox="0 0 24 24"><path id="check-path" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <div class="success-title">Welcome, <span id="success-name">User</span></div>
+        <div class="success-sub" id="success-email">you@gmail.com</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- cursor ---------------- */
+const dot = document.querySelector('.cursor-dot');
+const ring = document.querySelector('.cursor-ring');
+const glow = document.getElementById('glow');
+let mx=0,my=0,rx=0,ry=0;
+window.addEventListener('mousemove', e=>{
+  mx=e.clientX; my=e.clientY;
+  dot.style.left=mx+'px'; dot.style.top=my+'px';
+  glow.style.left=mx+'px'; glow.style.top=my+'px';
+  parallaxHero(e.clientX, e.clientY);
+});
+
+/* ---------------- hero collage: parallax + sparkles ---------------- */
+const heroCollage = document.getElementById('hero-collage');
+const heroFrame = document.querySelector('.hero-collage-frame');
+const heroImg = document.getElementById('hero-img');
+let heroTX=0, heroTY=0;
+function parallaxHero(clientX, clientY){
+  if(!heroCollage) return;
+  const rect = heroCollage.getBoundingClientRect();
+  if(clientY > rect.bottom + 200 || clientY < rect.top - 200) return;
+  const px = (clientX/window.innerWidth - 0.5);
+  const py = (clientY/window.innerHeight - 0.5);
+  heroTX = px * 14; heroTY = py * 8;
+  heroImg.style.transform = `translate(${heroTX}px, ${heroTY}px) scale(1.04)`;
+}
+function spawnSparkles(){
+  if(!heroFrame) return;
+  for(let i=0;i<18;i++){
+    const s = document.createElement('div');
+    s.className='sparkle';
+    const size = 2 + Math.random()*3;
+    s.style.width=size+'px'; s.style.height=size+'px';
+    s.style.left = (Math.random()*100)+'%';
+    s.style.top = (Math.random()*70)+'%';
+    s.style.animationDelay = (Math.random()*4)+'s';
+    s.style.animationDuration = (2.6+Math.random()*2.4)+'s';
+    heroFrame.appendChild(s);
+  }
+}
+spawnSparkles();
+
+/* ---------------- hero collage hotspots: interactive character markers ---------------- */
+const HOTSPOTS = [
+  {x:6.5,  y:70, name:'Vegeta',       series:'Dragon Ball',        desc:'Prince of the Saiyans — pride, power, and a rivalry that never quits.'},
+  {x:9,    y:8,  name:'Happy',        series:'Fairy Tail',         desc:'A flying blue exceed and Natsu\'s loyal partner.'},
+  {x:14.5, y:63, name:'Gon Freecss',  series:'Hunter x Hunter',    desc:'An eager young Hunter searching for his father.'},
+  {x:22.5, y:60, name:'Ichigo Kurosaki', series:'Bleach',          desc:'A substitute Soul Reaper who protects both worlds.'},
+  {x:30,   y:59, name:'Sakura Haruno',  series:'Naruto',           desc:'A skilled medical-nin and member of Team 7.'},
+  {x:37,   y:56, name:'Izuku Midoriya', series:'My Hero Academia', desc:'A quirkless boy who inherits the power of One For All.'},
+  {x:46,   y:55, name:'Son Goku',       series:'Dragon Ball',      desc:'Earth\'s strongest defender, always chasing a stronger foe.'},
+  {x:55,   y:53, name:'Naruto Uzumaki', series:'Naruto',           desc:'The Hidden Leaf\'s number-one hyperactive ninja.'},
+  {x:63,   y:53, name:'Monkey D. Luffy',series:'One Piece',        desc:'Captain of the Straw Hats, chasing the title of Pirate King.'},
+  {x:71,   y:54, name:'Tanjiro Kamado', series:'Demon Slayer',     desc:'A kind-hearted demon slayer protecting his sister Nezuko.'},
+  {x:79.5, y:57, name:'Sailor Moon',    series:'Sailor Moon',      desc:'Guardian of love and justice, protector of the Moon Kingdom.'},
+  {x:90,   y:9,  name:'Chopper',        series:'One Piece',        desc:'The Straw Hats\' reindeer doctor and shapeshifter.'},
+  {x:86,   y:87, name:'Chopper',        series:'One Piece',        desc:'Adorable, brilliant, and always ready to help his crew.'},
+  {x:95,   y:59, name:'Levi Ackerman',  series:'Attack on Titan',  desc:'Humanity\'s strongest soldier, sharp blade and sharper tongue.'},
+];
+
+const hotspotLayer = document.getElementById('hero-hotspots');
+let activeHotspotCard = null;
+
+function positionCard(card, hx, hy){
+  // keep the card inside the frame — flip horizontally/vertically near edges
+  const cardW = 200, cardH = 96;
+  let left = hx, top = hy;
+  const flipX = hx > 66;
+  const flipY = hy > 66;
+  card.style.left = flipX ? `calc(${left}% - ${cardW}px - 14px)` : `calc(${left}% + 14px)`;
+  card.style.top  = flipY ? `calc(${top}% - ${cardH}px - 6px)` : `calc(${top}% + 16px)`;
+}
+
+function showHotspotCard(hs, btn){
+  hideHotspotCard();
+  const card = document.createElement('div');
+  card.className = 'hotspot-card';
+  card.innerHTML = `
+    <div class="hc-name">${hs.name}</div>
+    <div class="hc-series mono">${hs.series}</div>
+    <div class="hc-desc">${hs.desc}</div>`;
+  hotspotLayer.appendChild(card);
+  positionCard(card, hs.x, hs.y);
+  gsap.to(card,{opacity:1,y:0,scale:1,duration:0.3,ease:'back.out(1.8)'});
+  btn.classList.add('active');
+  activeHotspotCard = {card, btn};
+}
+function hideHotspotCard(){
+  if(!activeHotspotCard) return;
+  const {card, btn} = activeHotspotCard;
+  btn.classList.remove('active');
+  gsap.to(card,{opacity:0,y:8,scale:0.94,duration:0.2,ease:'power2.in',onComplete:()=>card.remove()});
+  activeHotspotCard = null;
+}
+
+function buildHotspots(){
+  if(!hotspotLayer) return;
+  HOTSPOTS.forEach(hs=>{
+    const btn = document.createElement('button');
+    btn.className = 'hotspot';
+    btn.style.left = hs.x + '%';
+    btn.style.top = hs.y + '%';
+    btn.setAttribute('aria-label', hs.name);
+    btn.innerHTML = `<span class="ring1"></span><span class="ring2"></span><span class="core"></span>`;
+    btn.addEventListener('mouseenter', ()=> showHotspotCard(hs, btn));
+    btn.addEventListener('mouseleave', hideHotspotCard);
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      if(activeHotspotCard && activeHotspotCard.btn === btn){ hideHotspotCard(); }
+      else showHotspotCard(hs, btn);
+    });
+    hotspotLayer.appendChild(btn);
+  });
+}
+buildHotspots();
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.hotspot')) hideHotspotCard();
+});
+function ringLoop(){
+  rx += (mx-rx)*0.15; ry += (my-ry)*0.15;
+  ring.style.left=rx+'px'; ring.style.top=ry+'px';
+  requestAnimationFrame(ringLoop);
+}
+ringLoop();
+document.addEventListener('mouseover', e=>{
+  if(e.target.closest('a,button,.card')) ring.classList.add('hover');
+});
+document.addEventListener('mouseout', e=>{
+  if(e.target.closest('a,button,.card')) ring.classList.remove('hover');
+});
+
+/* ---------------- generative synthwave music engine ---------------- */
+let audioCtx = null, masterGain = null, padGain = null, padOsc1 = null, padOsc2 = null, soundOn = false;
+let bassGain = null, arpGain = null, musicFilter = null, schedulerId = null;
+const soundToggleBtn = document.getElementById('sound-toggle');
+const soundBars = document.getElementById('sound-bars');
+const soundVolume = document.getElementById('sound-volume');
+const userVol = ()=> (soundVolume.value/100);
+
+/* Am - F - C - G progression, synthwave-style. Notes in Hz (A3 octave root). */
+const CHORDS = [
+  {name:'Am', root:220.00, notes:[220.00,261.63,329.63,392.00]},   // A C E G
+  {name:'F',  root:174.61, notes:[174.61,220.00,261.63,349.23]},   // F A C F
+  {name:'C',  root:130.81, notes:[196.00,261.63,329.63,392.00]},   // G C E G
+  {name:'G',  root:196.00, notes:[196.00,246.94,293.66,392.00]},   // G B D G
+];
+let chordIdx = 0, arpStep = 0;
+const BEAT = 0.42; // seconds per 16th-note step, ~140bpm feel
+
+function ensureAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0;
+  masterGain.connect(audioCtx.destination);
+
+  musicFilter = audioCtx.createBiquadFilter();
+  musicFilter.type='lowpass'; musicFilter.frequency.value = 1100;
+  musicFilter.connect(masterGain);
+
+  // soft evolving pad — two detuned sines per chord change
+  padGain = audioCtx.createGain();
+  padGain.gain.value = 0.32;
+  padOsc1 = audioCtx.createOscillator(); padOsc1.type='sine'; padOsc1.frequency.value = CHORDS[0].root;
+  padOsc2 = audioCtx.createOscillator(); padOsc2.type='sine'; padOsc2.frequency.value = CHORDS[0].root*1.5;
+  padOsc1.connect(padGain); padOsc2.connect(padGain);
+  padGain.connect(musicFilter);
+  padOsc1.start(); padOsc2.start();
+
+  // sub bassline gain bus (individual notes plucked by scheduler)
+  bassGain = audioCtx.createGain(); bassGain.gain.value = 0.55; bassGain.connect(musicFilter);
+  // arpeggio pluck bus
+  arpGain = audioCtx.createGain(); arpGain.gain.value = 0.22; arpGain.connect(musicFilter);
+
+  // slow filter sweep for movement
+  gsap.to(musicFilter.frequency,{value:1900,duration:16,ease:'sine.inOut',yoyo:true,repeat:-1});
+
+  startScheduler();
+}
+
+function pluck(bus, freq, type, dur, gainMul){
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.value = 0;
+  o.connect(g); g.connect(bus);
+  const now = audioCtx.currentTime;
+  g.gain.linearRampToValueAtTime(gainMul, now+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+  o.start(now); o.stop(now+dur+0.05);
+}
+
+function startScheduler(){
+  if(schedulerId) return;
+  const ARP_PATTERN = [0,1,2,1]; // indices into chord.notes (excluding root, which is the bass)
+  function tick(){
+    if(soundOn){
+      const chord = CHORDS[chordIdx];
+      // change chord every 16 steps (one bar of 4 beats @ 16th grid... simplified: every 16 ticks)
+      if(arpStep % 16 === 0){
+        const nextChord = CHORDS[chordIdx];
+        gsap.to(padOsc1.frequency,{value:nextChord.root, duration:1.1, ease:'sine.inOut'});
+        gsap.to(padOsc2.frequency,{value:nextChord.root*1.5, duration:1.1, ease:'sine.inOut'});
+        pluck(bassGain, nextChord.root/2, 'sine', 1.6, 0.5);
+      }
+      // arpeggio pluck on every other 16th
+      if(arpStep % 2 === 0){
+        const noteIdx = ARP_PATTERN[(arpStep/2) % ARP_PATTERN.length];
+        const freq = chord.notes[1 + (noteIdx % (chord.notes.length-1))];
+        pluck(arpGain, freq*2, 'triangle', 0.5, 0.35);
+      }
+      arpStep++;
+      if(arpStep % 16 === 0) chordIdx = (chordIdx+1) % CHORDS.length;
+    }
+    schedulerId = setTimeout(tick, BEAT*1000);
+  }
+  tick();
+}
+
+function setSoundOn(on){
+  soundOn = on;
+  ensureAudio();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  const targetVol = on ? userVol()*0.22 : 0;
+  gsap.to(masterGain.gain,{value:targetVol,duration:0.9,ease:'power2.out'});
+  soundBars.classList.toggle('muted', !on);
+  localStorage.setItem('neonime_sound', on ? '1':'0');
+}
+
+soundToggleBtn.addEventListener('click', ()=> setSoundOn(!soundOn));
+soundVolume.addEventListener('input', ()=>{
+  if(soundOn && masterGain) masterGain.gain.value = userVol()*0.22;
+});
+
+/* short blip on card / interactive hover */
+function playHoverBlip(){
+  if(!soundOn || !audioCtx) return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type='triangle'; o.frequency.value = 720 + Math.random()*260;
+  g.gain.value = 0;
+  o.connect(g); g.connect(masterGain);
+  const now = audioCtx.currentTime;
+  g.gain.linearRampToValueAtTime(0.5, now+0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, now+0.16);
+  o.start(now); o.stop(now+0.18);
+}
+document.addEventListener('mouseover', e=>{
+  if(e.target.closest('.card, .btn, .filter-chip, .signin, .load-more')) playHoverBlip();
+});
+
+/* restore saved sound preference (still requires a user gesture to actually start in most browsers) */
+if(localStorage.getItem('neonime_sound')==='1'){
+  const startOnce = ()=>{ setSoundOn(true); document.removeEventListener('click', startOnce); };
+  document.addEventListener('click', startOnce, {once:true});
+}
+
+/* ---------------- particle canvas ---------------- */
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+resize(); window.addEventListener('resize',resize);
+const colors=['#00f0ff','#9d4dff','#ff2f9e','#3b5bff'];
+const particles = Array.from({length:90},()=>({
+  x:Math.random()*canvas.width, y:Math.random()*canvas.height,
+  r:Math.random()*1.8+0.4, vx:(Math.random()-0.5)*0.15, vy:(Math.random()-0.5)*0.15,
+  c:colors[Math.floor(Math.random()*colors.length)], a:Math.random()*0.5+0.2
+}));
+function animateParticles(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0)p.x=canvas.width; if(p.x>canvas.width)p.x=0;
+    if(p.y<0)p.y=canvas.height; if(p.y>canvas.height)p.y=0;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.c; ctx.globalAlpha=p.a;
+    ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+/* ---------------- loader ---------------- */
+const barFill = document.querySelector('.bar-fill');
+const pctEl = document.querySelector('.pct');
+let pct = 0;
+const loadInterval = setInterval(()=>{
+  pct += Math.random()*14;
+  if(pct>=100){pct=100; clearInterval(loadInterval); finishLoad();}
+  barFill.style.width = pct+'%';
+  pctEl.textContent = Math.floor(pct)+'%';
+},180);
+
+function finishLoad(){
+  gsap.to('#loader',{opacity:0,duration:0.8,delay:0.3,ease:'power2.out',onComplete:()=>{
+    document.getElementById('loader').style.display='none';
+    runHeroIntro();
+  }});
+}
+
+function runHeroIntro(){
+  gsap.fromTo('#hero-collage',{opacity:0,scale:0.94,y:26},{opacity:1,scale:1,y:0,duration:1,ease:'power3.out'});
+  gsap.to('.hero h1 .line',{y:0,duration:1,stagger:0.12,ease:'power4.out',delay:0.25});
+  gsap.to('#hero-p',{opacity:1,duration:0.8,delay:0.65,ease:'power2.out'});
+  gsap.to('#hero-cta',{opacity:1,duration:0.8,delay:0.85,ease:'power2.out'});
+  gsap.to('#hero-stats',{opacity:1,duration:0.8,delay:1.0,ease:'power2.out'});
+  animateCounter('stat-anime',1240);
+  animateCounter('stat-chars',3820);
+  animateCounter('stat-studios',96);
+}
+
+/* ---------------- magnetic buttons ---------------- */
+document.querySelectorAll('.btn').forEach(btn=>{
+  btn.addEventListener('mousemove', e=>{
+    const r = btn.getBoundingClientRect();
+    const mx2 = e.clientX - r.left - r.width/2;
+    const my2 = e.clientY - r.top - r.height/2;
+    gsap.to(btn,{x:mx2*0.28, y:my2*0.5, duration:0.3, ease:'power2.out'});
+  });
+  btn.addEventListener('mouseleave', ()=> gsap.to(btn,{x:0,y:0,duration:0.5,ease:'elastic.out(1,0.4)'}));
+});
+
+/* ---------------- 3D tilt for cards ---------------- */
+function attachTilt(el, maxTilt){
+  el.addEventListener('mousemove', e=>{
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left)/r.width - 0.5;
+    const py = (e.clientY - r.top)/r.height - 0.5;
+    const base = el.dataset.flipped === 'true' ? 180 : 0;
+    const sign = el.dataset.flipped === 'true' ? -1 : 1;
+    gsap.to(el,{rotationY: base + sign*px*maxTilt, rotationX:-py*maxTilt, duration:0.4, ease:'power2.out', overwrite:'auto'});
+  });
+  el.addEventListener('mouseleave', ()=>{
+    const base = el.dataset.flipped === 'true' ? 180 : 0;
+    gsap.to(el,{rotationY:base, rotationX:0, duration:0.6, ease:'power3.out'});
+  });
+}
+function tiltifyNewCards(container, maxTilt){
+  Array.from(container.children).forEach(c=>{
+    if(c.dataset.tiltBound) return;
+    c.dataset.tiltBound='1';
+    attachTilt(c, maxTilt);
+  });
+}
+function animateCounter(id,target){
+  const el=document.getElementById(id);
+  gsap.to({val:0},{val:target,duration:1.8,delay:1.1,ease:'power2.out',onUpdate:function(){
+    el.textContent = Math.floor(this.targets()[0].val).toLocaleString();
+  }});
+}
+
+/* ---------------- scroll reveal ---------------- */
+gsap.registerPlugin(ScrollTrigger);
+document.querySelectorAll('.reveal').forEach(el=>{
+  gsap.to(el,{
+    opacity:1, y:0, duration:0.9, ease:'power3.out',
+    scrollTrigger:{trigger:el, start:'top 85%'}
+  });
+});
+
+/* ---------------- hero CTA wiring ---------------- */
+let firstTrendingId = null;
+document.getElementById('cta-browse').addEventListener('click', ()=>{
+  document.getElementById('browse').scrollIntoView({behavior:'smooth'});
+});
+document.getElementById('cta-trailer').addEventListener('click', ()=>{
+  if(firstTrendingId) openAnimeModal(firstTrendingId);
+  else document.getElementById('trending').scrollIntoView({behavior:'smooth'});
+});
+
+/* ---------------- AniList live fetch ---------------- */
+const rail = document.getElementById('trending-rail');
+// skeleton placeholders while loading
+for(let i=0;i<10;i++){
+  const s=document.createElement('div');
+  s.className='card skeleton';
+  s.style.height='366px';
+  rail.appendChild(s);
+}
+
+const query = `
+query {
+  Page(page:1, perPage:20){
+    media(sort:TRENDING_DESC, type:ANIME){
+      id
+      title{ romaji english }
+      coverImage{ large }
+      averageScore
+      episodes
+      format
+      seasonYear
+    }
+  }
+}`;
+
+/* build a poster card; rankPrefix shows a #N badge (used on the trending rail) */
+function createCard(anime, i, rankPrefix){
+  const card = document.createElement('div');
+  card.className='card';
+  card.dataset.id = anime.id;
+  const title = anime.title.english || anime.title.romaji;
+  const score = anime.averageScore ? (anime.averageScore/10).toFixed(1) : '—';
+  card.innerHTML = `
+    ${rankPrefix ? `<div class="rank mono">#${i+1}</div>` : ''}
+    <img class="poster" src="${anime.coverImage.large}" alt="${title}" loading="lazy">
+    <div class="info">
+      <div class="title">${title}</div>
+      <div class="meta">
+        <span>${anime.seasonYear || ''} · ${anime.format || ''}</span>
+        <span class="score">★ ${score}</span>
+      </div>
+    </div>`;
+  card.addEventListener('click', ()=>openAnimeModal(anime.id));
+  return card;
+}
+
+fetch('https://graphql.anilist.co',{
+  method:'POST',
+  headers:{'Content-Type':'application/json','Accept':'application/json'},
+  body: JSON.stringify({query})
+})
+.then(r=>r.json())
+.then(data=>{
+  rail.innerHTML='';
+  const list = data?.data?.Page?.media || [];
+  if(list.length) firstTrendingId = list[0].id;
+  list.forEach((anime, i)=> rail.appendChild(createCard(anime, i, true)) );
+  gsap.from('#trending-rail .card',{opacity:0,y:30,duration:0.6,stagger:0.06,ease:'power2.out'});
+  tiltifyNewCards(rail, 14);
+  buildTicker(list.map(a=> a.title.english || a.title.romaji));
+})
+.catch(()=>{
+  rail.innerHTML = '<div style="color:#8b87a0;font-family:JetBrains Mono,monospace;font-size:0.8rem;padding:20px;">SIGNAL LOST — could not reach AniList API from this network.</div>';
+});
+
+/* ---------------- Browse Archive grid (more anime, paginated) ---------------- */
+const browseGrid = document.getElementById('browse-grid');
+const loadMoreBtn = document.getElementById('load-more-btn');
+let browsePage = 1;
+
+function skeletonize(container, count, height){
+  for(let i=0;i<count;i++){
+    const s=document.createElement('div');
+    s.className='card skeleton';
+    s.style.height=height;
+    container.appendChild(s);
+  }
+}
+skeletonize(browseGrid, 15, '318px');
+
+const browseQuery = `
+query($page:Int, $genre:String){
+  Page(page:$page, perPage:15){
+    pageInfo{ hasNextPage }
+    media(sort:POPULARITY_DESC, type:ANIME, genre:$genre){
+      id
+      title{ romaji english }
+      coverImage{ large }
+      averageScore
+      format
+      seasonYear
+    }
+  }
+}`;
+let activeGenre = '';
+
+function loadBrowsePage(page){
+  loadMoreBtn.disabled = true;
+  loadMoreBtn.textContent = 'LOADING…';
+  return fetch('https://graphql.anilist.co',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body: JSON.stringify({query:browseQuery, variables:{page, genre: activeGenre || null}})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    if(page===1) browseGrid.innerHTML='';
+    const list = data?.data?.Page?.media || [];
+    const hasNext = data?.data?.Page?.pageInfo?.hasNextPage;
+    const startLen = browseGrid.children.length;
+    list.forEach((anime)=> browseGrid.appendChild(createCard(anime, 0, false)) );
+    gsap.from(Array.from(browseGrid.children).slice(startLen), {opacity:0,y:24,duration:0.5,stagger:0.05,ease:'power2.out'});
+    tiltifyNewCards(browseGrid, 10);
+    loadMoreBtn.disabled = false;
+    loadMoreBtn.textContent = 'LOAD MORE →';
+    if(!hasNext) loadMoreBtn.style.display='none';
+  })
+  .catch(()=>{
+    if(page===1) browseGrid.innerHTML = '<div style="grid-column:1/-1;color:#8b87a0;font-family:JetBrains Mono,monospace;font-size:0.8rem;padding:20px;">SIGNAL LOST — could not reach AniList API from this network.</div>';
+    loadMoreBtn.style.display='none';
+  });
+}
+loadBrowsePage(browsePage);
+loadMoreBtn.addEventListener('click', ()=>{ browsePage++; loadBrowsePage(browsePage); });
+
+/* ---------------- Upcoming / 2026 Anime grid ---------------- */
+const upcomingGrid = document.getElementById('upcoming-grid');
+const loadMoreUpcomingBtn = document.getElementById('load-more-upcoming-btn');
+const upcomingFilterBar = document.getElementById('upcoming-filter-bar');
+let upcomingPage = 1;
+let activeUpcomingStatus = '';
+skeletonize(upcomingGrid, 15, '318px');
+
+const upcomingQuery = `
+query($page:Int, $statusIn:[MediaStatus]){
+  Page(page:$page, perPage:15){
+    pageInfo{ hasNextPage }
+    media(sort:POPULARITY_DESC, type:ANIME, startDate_greater:20251231, status_in:$statusIn){
+      id
+      title{ romaji english }
+      coverImage{ large }
+      format
+      status
+      season
+      seasonYear
+      startDate{ year month day }
+    }
+  }
+}`;
+
+function formatUpcomingDate(anime){
+  const d = anime.startDate;
+  if(anime.season && anime.seasonYear) return `${anime.season} ${anime.seasonYear}`;
+  if(d && d.year) return [d.year, d.month, d.day].filter(Boolean).join('-');
+  return 'TBA';
+}
+
+function createUpcomingCard(anime){
+  const card = document.createElement('div');
+  card.className='card';
+  card.dataset.id = anime.id;
+  const title = anime.title.english || anime.title.romaji;
+  const isUpcoming = anime.status === 'NOT_YET_RELEASED';
+  const badgeClass = isUpcoming ? 'not-yet' : 'airing';
+  const badgeLabel = isUpcoming ? 'UPCOMING' : 'AIRING';
+  card.innerHTML = `
+    <div class="status-badge ${badgeClass} mono">${badgeLabel}</div>
+    <img class="poster" src="${anime.coverImage.large}" alt="${title}" loading="lazy">
+    <div class="info">
+      <div class="title">${title}</div>
+      <div class="meta">
+        <span>${anime.format || ''}</span>
+        <span class="score mono">${formatUpcomingDate(anime)}</span>
+      </div>
+    </div>`;
+  card.addEventListener('click', ()=>openAnimeModal(anime.id));
+  return card;
+}
+
+function loadUpcomingPage(page){
+  loadMoreUpcomingBtn.disabled = true;
+  loadMoreUpcomingBtn.textContent = 'LOADING…';
+  const statusIn = activeUpcomingStatus ? [activeUpcomingStatus] : ['NOT_YET_RELEASED','RELEASING'];
+  return fetch('https://graphql.anilist.co',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body: JSON.stringify({query:upcomingQuery, variables:{page, statusIn}})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    if(page===1) upcomingGrid.innerHTML='';
+    const list = data?.data?.Page?.media || [];
+    const hasNext = data?.data?.Page?.pageInfo?.hasNextPage;
+    const startLen = upcomingGrid.children.length;
+    list.forEach((anime)=> upcomingGrid.appendChild(createUpcomingCard(anime)) );
+    gsap.from(Array.from(upcomingGrid.children).slice(startLen), {opacity:0,y:24,duration:0.5,stagger:0.05,ease:'power2.out'});
+    tiltifyNewCards(upcomingGrid, 10);
+    loadMoreUpcomingBtn.disabled = false;
+    loadMoreUpcomingBtn.textContent = 'LOAD MORE →';
+    loadMoreUpcomingBtn.style.display = hasNext ? '' : 'none';
+    if(!list.length && page===1){
+      upcomingGrid.innerHTML = '<div style="grid-column:1/-1;color:#8b87a0;font-family:JetBrains Mono,monospace;font-size:0.8rem;padding:20px;">No titles found for this filter yet — check back as studios announce more of the 2026 lineup.</div>';
+      loadMoreUpcomingBtn.style.display='none';
+    }
+  })
+  .catch(()=>{
+    if(page===1) upcomingGrid.innerHTML = '<div style="grid-column:1/-1;color:#8b87a0;font-family:JetBrains Mono,monospace;font-size:0.8rem;padding:20px;">SIGNAL LOST — could not reach AniList API from this network.</div>';
+    loadMoreUpcomingBtn.style.display='none';
+  });
+}
+loadUpcomingPage(upcomingPage);
+loadMoreUpcomingBtn.addEventListener('click', ()=>{ upcomingPage++; loadUpcomingPage(upcomingPage); });
+
+upcomingFilterBar.addEventListener('click', e=>{
+  const chip = e.target.closest('.filter-chip');
+  if(!chip) return;
+  upcomingFilterBar.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  activeUpcomingStatus = chip.dataset.status || '';
+  upcomingPage = 1;
+  loadMoreUpcomingBtn.style.display = '';
+  upcomingGrid.innerHTML='';
+  skeletonize(upcomingGrid, 15, '318px');
+  loadUpcomingPage(upcomingPage);
+});
+
+/* ---------------- genre filter bar ---------------- */
+const filterBar = document.getElementById('filter-bar');
+filterBar.addEventListener('click', e=>{
+  const chip = e.target.closest('.filter-chip');
+  if(!chip) return;
+  filterBar.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  activeGenre = chip.dataset.genre || '';
+  browsePage = 1;
+  loadMoreBtn.style.display = '';
+  browseGrid.innerHTML='';
+  skeletonize(browseGrid, 15, '318px');
+  loadBrowsePage(browsePage);
+});
+
+/* ---------------- marquee ticker of trending titles ---------------- */
+function buildTicker(titles){
+  const track = document.getElementById('ticker-track');
+  if(!track || !titles.length) return;
+  const row = titles.map(t=>`<span>${t}</span>`).join('');
+  track.innerHTML = row + row; // duplicate for seamless loop
+}
+
+/* ---------------- Character Archive: live per-character dossiers ---------------- */
+const charGrid = document.getElementById('char-archive-grid');
+const loadMoreCharsBtn = document.getElementById('load-more-chars-btn');
+let charPage = 1;
+skeletonize(charGrid, 10, '290px');
+
+const charArchiveQuery = `
+query($page:Int){
+  Page(page:$page, perPage:10){
+    pageInfo{ hasNextPage }
+    characters(sort:FAVOURITES_DESC){
+      id
+      name{ full native }
+      image{ large }
+      favourites
+      description(asHtml:false)
+      media(perPage:1, sort:POPULARITY_DESC){
+        edges{
+          node{ title{ romaji english } }
+          characterRole
+        }
+      }
+    }
+  }
+}`;
+
+function buildFlipCard(c){
+  const name = c.name?.full || 'Unknown';
+  const role = c.media?.edges?.[0]?.characterRole || 'CHARACTER';
+  const anime = c.media?.edges?.[0]?.node?.title?.english || c.media?.edges?.[0]?.node?.title?.romaji || 'Unknown title';
+  const rawDesc = (c.description || 'No dossier text on file for this character yet.').replace(/<[^>]+>/g,'').replace(/\[.*?\]\(.*?\)/g,'');
+  const desc = rawDesc.slice(0,150) + (rawDesc.length>150 ? '…' : '');
+  const fav = (c.favourites||0).toLocaleString();
+
+  const wrap = document.createElement('div');
+  wrap.className = 'flip-card';
+  wrap.innerHTML = `
+    <div class="flip-face flip-front">
+      <img src="${c.image?.large||''}" alt="${name}" loading="lazy">
+      <div class="fav-badge mono">♥ ${fav}</div>
+      <div class="name-strip">
+        <div class="n">${name}</div>
+        <div class="r">${role}</div>
+      </div>
+    </div>
+    <div class="flip-face flip-back">
+      <div class="fb-title">${name}</div>
+      <div class="fb-anime mono">${anime}</div>
+      <div class="fb-desc">${desc}</div>
+      <div class="fb-hint mono">TAP TO FLIP BACK →</div>
+    </div>`;
+  wrap.dataset.flipped = 'false';
+  wrap.addEventListener('click', ()=>{
+    const flipped = wrap.dataset.flipped === 'true';
+    wrap.dataset.flipped = flipped ? 'false' : 'true';
+    wrap.classList.toggle('flipped', !flipped);
+    gsap.to(wrap,{rotationY: flipped ? 0 : 180, rotationX:0, duration:0.7, ease:'power3.inOut'});
+  });
+  return wrap;
+}
+
+function loadCharPage(page){
+  loadMoreCharsBtn.disabled = true;
+  loadMoreCharsBtn.textContent = 'LOADING…';
+  return fetch('https://graphql.anilist.co',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body: JSON.stringify({query:charArchiveQuery, variables:{page}})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    if(page===1) charGrid.innerHTML = '';
+    const list = data?.data?.Page?.characters || [];
+    const hasNext = data?.data?.Page?.pageInfo?.hasNextPage;
+    if(page===1 && !list.length){
+      charGrid.innerHTML = '<div class="mono" style="color:var(--muted);grid-column:1/-1;">SIGNAL LOST — no character data available.</div>';
+      loadMoreCharsBtn.style.display = 'none';
+      return;
+    }
+    const startLen = charGrid.children.length;
+    list.forEach(c => charGrid.appendChild(buildFlipCard(c)));
+    gsap.from(Array.from(charGrid.children).slice(startLen),{opacity:0,y:30,rotateX:-20,duration:0.7,stagger:0.06,ease:'power3.out'});
+    tiltifyNewCards(charGrid, 16);
+    loadMoreCharsBtn.disabled = false;
+    loadMoreCharsBtn.textContent = 'LOAD MORE CHARACTERS →';
+    if(!hasNext) loadMoreCharsBtn.style.display = 'none';
+  })
+  .catch(()=>{
+    if(page===1) charGrid.innerHTML = '<div class="mono" style="color:var(--muted);grid-column:1/-1;">SIGNAL LOST — could not reach AniList API from this network.</div>';
+    loadMoreCharsBtn.style.display = 'none';
+  });
+}
+loadCharPage(charPage);
+loadMoreCharsBtn.addEventListener('click', ()=>{ charPage++; loadCharPage(charPage); });
+
+/* ---------------- Anime detail modal + characters ---------------- */
+const modal = document.getElementById('anime-modal');
+const modalPanel = document.getElementById('modal-panel');
+const modalContent = document.getElementById('modal-content');
+const modalCloseBtn = document.getElementById('modal-close');
+
+/* each entrance variant gives a distinct feel — the anime's id picks which one plays */
+function animZoomBlur(panel){
+  gsap.fromTo(panel,{opacity:0,scale:0.55,filter:'blur(16px)'},{opacity:1,scale:1,filter:'blur(0px)',duration:0.6,ease:'power3.out'});
+}
+function animSlideRotate(panel){
+  gsap.fromTo(panel,{opacity:0,x:-180,rotate:-9},{opacity:1,x:0,rotate:0,duration:0.65,ease:'back.out(1.6)'});
+}
+function animFlip3D(panel){
+  gsap.fromTo(panel,{opacity:0,rotationY:92,transformPerspective:900},{opacity:1,rotationY:0,duration:0.7,ease:'power4.out'});
+}
+function animGlitch(panel){
+  gsap.set(panel,{opacity:1});
+  gsap.fromTo(panel,{skewX:18,x:-40,opacity:0},{skewX:0,x:0,opacity:1,duration:0.09,repeat:4,yoyo:true,ease:'none'});
+}
+function animDropBounce(panel){
+  gsap.fromTo(panel,{opacity:0,y:-280},{opacity:1,y:0,duration:0.85,ease:'bounce.out'});
+}
+const animVariants = [animZoomBlur, animSlideRotate, animFlip3D, animGlitch, animDropBounce];
+
+const modalQuery = `
+query($id:Int){
+  Media(id:$id, type:ANIME){
+    id
+    title{ romaji english }
+    description(asHtml:false)
+    bannerImage
+    coverImage{ large }
+    genres
+    episodes
+    status
+    averageScore
+    seasonYear
+    trailer{ id site thumbnail }
+    studios(isMain:true){ nodes{ name } }
+    characters(sort:ROLE, perPage:12){
+      edges{
+        role
+        node{ name{ full } image{ large } }
+      }
+    }
+  }
+}`;
+
+function openAnimeModal(id){
+  document.body.style.overflow = 'hidden';
+  modal.classList.add('open');
+  modalContent.innerHTML = '<div class="modal-loading mono">DECRYPTING SIGNAL…</div>';
+  const variant = animVariants[Math.abs(id) % animVariants.length];
+  variant(modalPanel);
+
+  fetch('https://graphql.anilist.co',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body: JSON.stringify({query:modalQuery, variables:{id}})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    const m = data?.data?.Media;
+    if(!m){ modalContent.innerHTML = '<div class="modal-loading mono">SIGNAL LOST — no data for this title.</div>'; return; }
+    const title = m.title.english || m.title.romaji;
+    const studio = m.studios?.nodes?.[0]?.name || '—';
+    const score = m.averageScore ? (m.averageScore/10).toFixed(1) : '—';
+    const rawDesc = (m.description || '').replace(/<[^>]+>/g,'');
+    const desc = rawDesc.slice(0,420);
+    const chars = (m.characters?.edges || []).map(e=>`
+      <div class="char-card">
+        <img src="${e.node.image?.large||''}" alt="${e.node.name?.full||''}" loading="lazy">
+        <div class="char-name">${e.node.name?.full||'Unknown'}</div>
+        <div class="char-role mono">${e.role}</div>
+      </div>`).join('');
+    let trailerHTML = '<div class="no-trailer mono">NO TRAILER SIGNAL AVAILABLE</div>';
+    if(m.trailer && m.trailer.id){
+      if(m.trailer.site === 'youtube'){
+        trailerHTML = `<div class="trailer-frame-wrap"><iframe src="https://www.youtube.com/embed/${m.trailer.id}" title="${title} trailer" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+      } else if(m.trailer.site === 'dailymotion'){
+        trailerHTML = `<div class="trailer-frame-wrap"><iframe src="https://www.dailymotion.com/embed/video/${m.trailer.id}" title="${title} trailer" allow="autoplay; fullscreen" allowfullscreen loading="lazy"></iframe></div>`;
+      }
+    }
+    modalContent.innerHTML = `
+      ${m.bannerImage ? `<img class="modal-banner" src="${m.bannerImage}" alt="">` : ''}
+      <div class="modal-body">
+        <h2>${title}</h2>
+        <div class="modal-meta mono">
+          <span>${m.seasonYear || '—'}</span><span>·</span>
+          <span>${m.episodes || '?'} EP</span><span>·</span>
+          <span>${m.status}</span><span>·</span>
+          <span class="score">★ ${score}</span>
+        </div>
+        <div class="modal-genres">${(m.genres||[]).map(g=>`<span class="genre-tag mono">${g}</span>`).join('')}</div>
+        <p class="modal-desc">${desc}${rawDesc.length>420?'…':''}</p>
+        <div class="modal-studio mono">STUDIO: ${studio}</div>
+        <div class="modal-trailer">
+          <h4 class="mono">Trailer</h4>
+          ${trailerHTML}
+        </div>
+        <h3 class="char-head">Characters</h3>
+        <div class="char-grid">${chars || '<div class="mono" style="color:var(--muted)">No character data available.</div>'}</div>
+      </div>`;
+  })
+  .catch(()=>{
+    modalContent.innerHTML = '<div class="modal-loading mono">SIGNAL LOST — could not reach AniList.</div>';
+  });
+}
+
+function closeModal(){
+  gsap.to(modalPanel,{opacity:0,duration:0.25,ease:'power2.in',onComplete:()=>{
+    modal.classList.remove('open');
+    modalPanel.style.opacity='';
+    document.body.style.overflow='';
+  }});
+}
+modalCloseBtn.addEventListener('click', closeModal);
+modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && modal.classList.contains('open')) closeModal(); });
+
+/* ---------------- Auth: sign in / welcome ---------------- */
+const signinBtn      = document.getElementById('signin-btn');
+const signinModal     = document.getElementById('signin-modal');
+const signinPanel     = document.getElementById('signin-panel');
+const signinClose     = document.getElementById('signin-close');
+const signinForm      = document.getElementById('signin-form');
+const signinEmailInp  = document.getElementById('signin-email');
+const signinError     = document.getElementById('signin-error');
+const signinSubmit    = document.getElementById('signin-submit');
+const formWrap        = document.getElementById('signin-form-wrap');
+const successWrap     = document.getElementById('signin-success');
+const successName     = document.getElementById('success-name');
+const successEmail    = document.getElementById('success-email');
+const checkPath       = document.getElementById('check-path');
+
+const userPill    = document.getElementById('user-pill');
+const userAvatar  = document.getElementById('user-avatar');
+const userNameEl  = document.getElementById('user-name');
+const userEmailEl = document.getElementById('user-email');
+const userDropdown= document.getElementById('user-dropdown');
+const signoutBtn  = document.getElementById('signout-btn');
+
+/* Turn "jane.doe07" / "jane_doe" into "Jane Doe" */
+function nameFromEmail(email){
+  const local = email.split('@')[0];
+  const cleaned = local.replace(/[0-9]+$/,'').replace(/[._-]+/g,' ').trim();
+  const words = (cleaned || local).split(' ').filter(Boolean);
+  const pretty = words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return pretty || local;
+}
+
+function openSigninModal(){
+  signinModal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  formWrap.style.display = 'block';
+  successWrap.classList.remove('show');
+  signinError.classList.remove('show');
+  signinError.textContent = '';
+  signinEmailInp.value = '';
+  gsap.fromTo(signinPanel,
+    {opacity:0, y:40, scale:0.9, rotate:-2},
+    {opacity:1, y:0, scale:1, rotate:0, duration:0.55, ease:'back.out(1.7)'}
+  );
+  setTimeout(()=> signinEmailInp.focus(), 300);
+}
+function closeSigninModal(){
+  gsap.to(signinPanel,{opacity:0,y:20,scale:0.94,duration:0.25,ease:'power2.in',onComplete:()=>{
+    signinModal.classList.remove('open');
+    signinPanel.style.opacity=''; signinPanel.style.transform='';
+    document.body.style.overflow='';
+  }});
+}
+signinBtn.addEventListener('click', openSigninModal);
+signinClose.addEventListener('click', closeSigninModal);
+signinModal.addEventListener('click', e=>{ if(e.target===signinModal) closeSigninModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && signinModal.classList.contains('open')) closeSigninModal(); });
+
+function launchConfetti(originEl){
+  const rect = originEl.getBoundingClientRect();
+  const colors = ['#00f0ff','#9d4dff','#ff2f9e','#3b5bff'];
+  for(let i=0;i<26;i++){
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.background = colors[i % colors.length];
+    p.style.left = (rect.left + rect.width/2) + 'px';
+    p.style.top = (rect.top + rect.height/2) + 'px';
+    p.style.position = 'fixed';
+    document.body.appendChild(p);
+    const angle = Math.random()*Math.PI*2;
+    const dist = 60 + Math.random()*110;
+    gsap.to(p,{
+      x: Math.cos(angle)*dist, y: Math.sin(angle)*dist - 20,
+      rotate: Math.random()*360, opacity:0, duration: 0.7+Math.random()*0.5,
+      ease:'power2.out', onComplete:()=>p.remove()
+    });
+  }
+}
+
+function setSignedIn(email){
+  const name = nameFromEmail(email);
+  const initial = name.charAt(0).toUpperCase();
+  userAvatar.textContent = initial;
+  userNameEl.textContent = 'Welcome, ' + name.split(' ')[0];
+  userEmailEl.textContent = email;
+  localStorage.setItem('neonime_email', email);
+
+  signinBtn.style.display = 'none';
+  userPill.classList.add('show');
+  gsap.fromTo(userPill,{opacity:0,scale:0.7,y:-10},{opacity:1,scale:1,y:0,duration:0.6,ease:'back.out(2)'});
+  gsap.fromTo(userAvatar,{boxShadow:'0 0 0px rgba(0,240,255,0.9)'},{boxShadow:'0 0 22px rgba(0,240,255,0.7)',duration:0.5,yoyo:true,repeat:1,ease:'power2.out'});
+}
+
+function setSignedOut(){
+  localStorage.removeItem('neonime_email');
+  userPill.classList.remove('show','open');
+  signinBtn.style.display = '';
+  gsap.fromTo(signinBtn,{opacity:0,y:-6},{opacity:1,y:0,duration:0.4,ease:'power2.out'});
+}
+
+signinForm.addEventListener('submit', e=>{
+  e.preventDefault();
+  const email = signinEmailInp.value.trim();
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if(!valid){
+    signinError.textContent = 'Enter a valid email address to continue.';
+    signinError.classList.add('show');
+    gsap.fromTo(signinEmailInp,{x:-6},{x:0,duration:0.4,ease:'elastic.out(1,0.3)'});
+    return;
+  }
+  signinError.classList.remove('show');
+  signinSubmit.classList.add('loading');
+  signinSubmit.disabled = true;
+
+  setTimeout(()=>{
+    signinSubmit.classList.remove('loading');
+    signinSubmit.disabled = false;
+
+    const name = nameFromEmail(email);
+    successName.textContent = name;
+    successEmail.textContent = email;
+
+    gsap.to(formWrap,{opacity:0,y:-14,duration:0.25,ease:'power2.in',onComplete:()=>{
+      formWrap.style.display = 'none';
+      successWrap.classList.add('show');
+      gsap.fromTo(successWrap,{opacity:0,y:14},{opacity:1,y:0,duration:0.4,ease:'power2.out'});
+      gsap.fromTo(checkPath,{strokeDashoffset:40},{strokeDashoffset:0,duration:0.5,ease:'power2.out'});
+      gsap.fromTo('.success-ring',{scale:0.6},{scale:1,duration:0.5,ease:'back.out(3)'});
+      launchConfetti(document.querySelector('.success-ring'));
+    }});
+
+    setTimeout(()=>{
+      closeSigninModal();
+      setSignedIn(email);
+      formWrap.style.opacity = '';
+    }, 1500);
+  }, 1100);
+});
+
+userPill.addEventListener('click', e=>{
+  if(e.target === signoutBtn) return;
+  userPill.classList.toggle('open');
+});
+document.addEventListener('click', e=>{
+  if(!userPill.contains(e.target)) userPill.classList.remove('open');
+});
+signoutBtn.addEventListener('click', e=>{
+  e.stopPropagation();
+  setSignedOut();
+});
+
+/* restore session on load */
+const savedEmail = localStorage.getItem('neonime_email');
+if(savedEmail) setSignedIn(savedEmail);
+</script>
+</body>
+</html>
